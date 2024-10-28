@@ -1,4 +1,5 @@
 # SCSuck
+#### Sucks down songs so you dont have to!
 This program downloads and keeps soundcloud artist folders up to date, think of it like [Deemon](https://github.com/digitalec/deemon) but for soundcloud.
 
 \> scsuck
@@ -20,8 +21,9 @@ sudo apt install ffmpeg
 ```
 
 # Features
-- encodes .wav downloads to .flac
+- encodes hifi downloads to .flac
 - held together with duck tape
+- tags downloaded files with correct metadata and covers
 - uses a ridiculus amount of disk space
 - does not bother making full albums, every song is tagged as a single
 - no checks to stop it from using all of your disk space
@@ -31,6 +33,7 @@ sudo apt install ffmpeg
 git clone https://github.com/PixelMelt/SCSuck
 cd SCSuck
 npm i
+*edit config.json in the src folder*
 node src/index.js --help
 ```
 
