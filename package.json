@@ -8,9 +8,14 @@
     "start": "node src/index.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "pixelmelt",
+  "license": "SSPL",
   "dependencies": {
-    "soundcloud.ts": "^0.6.1"
+    "child_process": "^1.0.2",
+    "node-taglib-sharp": "^5.2.3",
+    "pouchdb": "^9.0.0",
+    "pouchdb-find": "^9.0.0",
+    "soundcloud.ts": "^0.6.2",
+    "undici": "^6.20.1"
   }
 }
