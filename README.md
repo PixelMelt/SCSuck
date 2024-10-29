@@ -22,11 +22,14 @@ sudo apt install ffmpeg
 
 # Features
 - encodes hifi downloads to .flac
+- download specific artists
 - held together with duck tape
+- download any new releases from all artists you added
 - tags downloaded files with correct metadata and covers
 - uses a ridiculus amount of disk space
 - does not bother making full albums, every song is tagged as a single
 - no checks to stop it from using all of your disk space
+- download all the people a user is following
 
 # How to use
 ```BASH
@@ -40,3 +43,5 @@ node src/index.js --help
 # Roadmap
 - backups probably
 - album support
+- detect deleted tracks/artists
+- download bandcamp too? maybe out of scope

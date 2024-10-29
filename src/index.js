@@ -1,4 +1,4 @@
-const Soundcloud = require("soundcloud.ts")
+const Soundcloud = require("/home/pix/Documents/SCSuck/src/soundcloud.ts/")
 const axios = require('axios');
 const fs = require('fs')
 const taglib = require('node-taglib-sharp')
@@ -29,16 +29,15 @@ async function isValidAccount() {
 }
 
 function sanitizeTrack(name) {
-    // name = name.replace(/\//g, "") // remove dash
-    // name = name.replace(/"/g, "") // remove quotes
     name = name.replace(/[\\/:*?\"<>|]/g, "") // same replacement as sc-ts
     return name
-    // return name.replace(/\//g, "-")
 }
 
 async function addBestCoverArt(track) {
-    let cover = track.artwork_url
+    let cover = track.artwork_url ?? track.user.avatar_url // why?
+
     let coverBig = cover.replace("large.jpg", "t500x500.jpg")
+    
     // check if 500x500 art exists by making an axios request
     let big = await axios.get(coverBig)
     // console.log(big)
@@ -215,6 +214,10 @@ async function encodeToFlac(file, outfile) {
 }
 
 async function downloadArtist(artistName) {
+    console.log(`Looking up ${artistName}'s albums`)
+    // use this to correctly tag songs that are in albums
+    let albums = await soundcloud.users.albums(artistName)
+
     console.log(`Looking up ${artistName}'s tracks`)
     let artistSongs;
     let artistSc;
@@ -235,10 +238,12 @@ async function downloadArtist(artistName) {
     for (let song of artistSongs) {
         // console.log(`Downloading ${artistName} track ${++index} of ${artistSongs.length}`)
         let songstat = await downloadTrack(song)
-        if (songstat == "retry") {
-            // add to the end of the list
-            artistSongs.push(song)
-        }
+        
+        // this part is probably a bad idea
+        // if (songstat == "retry") {
+        //     // add to the end of the list
+        //     artistSongs.push(song)
+        // }
     }
 
 	// add to artist db
@@ -267,6 +272,22 @@ async function downloadAllArtists() {
         console.log("Finished downloading tracks for all artists in the database.");
     } catch (error) {
         console.error("Error downloading all artists:", error);
+    }
+}
+
+
+async function syncFollowing(userperma){
+    try {
+        console.log(`Looking up who ${userperma} is following`)
+        let following = await soundcloud.users.following(userperma)
+        // console.log(following)
+        for (let user of following) {
+            await downloadArtist(user.permalink)
+        }
+    } catch (error) {
+        console.error(error)
+        console.log(`Error syncing ${userperma}'s following`)
+        return false
     }
 }
 
@@ -341,9 +362,15 @@ const options = {
         description: "Download all tracks by an artist",
         func: value => downloadArtist(value)
     },
+    addFollowing: {
+        shorthand: "f",
+        hasValue: true,
+        description: "Download all tracks by all artists that a user is following",
+        func: value => syncFollowing(value)
+    },
 	refresh: {
         shorthand: "r",
-        description: "Download tracks for all artists in the database",
+        description: "Download new tracks for all artists in the database",
         func: () => downloadAllArtists()
     },
 };
