@@ -1,6 +1,9 @@
+<img align="right" height="400" src="./logo.svg" alt="Logo">
+
 # SCSuck
 #### Sucks down songs so you dont have to!
 This program downloads and keeps soundcloud artist folders up to date, think of it like [Deemon](https://github.com/digitalec/deemon) but for soundcloud.
+
 
 \> scsuck
 <br>
