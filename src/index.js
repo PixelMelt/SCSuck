@@ -10,7 +10,8 @@ PouchDB.plugin(require('pouchdb-find'));
 
 const database = require("./database.js")
 
-const config = require("./config.json")
+const config = require("./config.json");
+const { ADDRGETNETWORKPARAMS } = require("dns");
 
 makeDir("./DB")
 const sdb = new PouchDB('./DB/SONG_DATABASE', {
@@ -54,12 +55,13 @@ async function writeMetadata(track, trackPath, imagePath) {
         // using node-taglib-sharp instead
         let file = taglib.File.createFromPath(trackPath)
         file.tag.albumArtists = [track.user.username]
+        file.tag.album = track.found_album ? track.found_album : track.title
+
         file.tag.performers = [track.user.username]
         file.tag.title = track.title
-        file.tag.album = track.title
         file.tag.year = new Date(track.created_at).getFullYear()
         file.tag.genres = [track.genre]
-        file.tag.trackNumber = 1
+        file.tag.track = track.trackIndex + 1
         let cover = taglib.Picture.fromPath(imagePath)
         file.tag.pictures = [cover]
         file.save();
@@ -96,22 +98,38 @@ async function downloadCover(url, outputFilePath) {
     }
 }
 
-async function downloadTrack(track) {
+async function downloadTrack(track, album = false) {
     let trackNamePermalink = track.permalink
     let artistNamePermalink = track.user.permalink.replace(" ", "_")
+    let albumNamePermalink = album ? album.permalink : trackNamePermalink
 
     let metaTrackName = sanitizeTrack(track.title)
     let metaArtistName = track.user.username
+    let metaAlbumName = album ? sanitizeTrack(album.title) : metaTrackName
 
+    // console.log(album)
     // console.log(track)
     // throw 2
 
-    let scSongID = `${artistNamePermalink}/${trackNamePermalink}`
+    let scSongID = `${artistNamePermalink}/${trackNamePermalink}` // do not use this for saving
 
-    let relativeSavePath = `${artistNamePermalink}/${metaTrackName}`
+    let relativeSavePath = `${artistNamePermalink}/${metaAlbumName}/${metaTrackName}`
 
     let artistDir = `${config.outputDir}/${artistNamePermalink}`
+    let albumDir = `${config.outputDir}/${artistNamePermalink}/${metaAlbumName}`
+    
     makeDir(artistDir)
+    makeDir(albumDir)
+
+    if(album){
+        let albumcover = album.artwork_url ?? album.user.avatar_url
+        try {
+            await downloadCover(albumcover.replace("large.jpg", "t500x500.jpg"), albumDir+"/cover.jpg")
+        } catch (error) {
+            console.error(`Error downloading cover for ${metaAlbumName} by ${metaArtistName}`)
+            console.error(error)
+        }
+    }
 
     // dont download again if we have it
     if (await database.musicExists(relativeSavePath, sdb)) {
@@ -119,17 +137,11 @@ async function downloadTrack(track) {
         return
     }
 
-    // try {
-    // 	track = await soundcloud.tracks.get(scSongID)
-    // } catch (error) {
-    // 	console.error(error)
-    // 	return "retry"
-    // }
 
-    console.log(`Downloading ${metaTrackName} by ${metaArtistName}`)
+    console.log(`Downloading ${metaTrackName} on ${metaAlbumName} by ${metaArtistName}`)
     let downloadedFilePath;
     try {
-        downloadedFilePath = await soundcloud.util.downloadTrack(scSongID, artistDir)
+        downloadedFilePath = await soundcloud.util.downloadTrack(scSongID, albumDir)
         // check if its actually there
         if (!fs.existsSync(downloadedFilePath)) {
             console.log(`Error downloading track ${metaTrackName} by ${metaArtistName}, not added to database`)
@@ -156,7 +168,7 @@ async function downloadTrack(track) {
 		case "m4a": // i get the other two but m4a??
             // re encode to flac
             console.log(`Downloaded uncompressed format, encoding to FLAC...`)
-            let encoded = encodeToFlac(downloadedFilePath, `${artistDir}/${metaTrackName}.flac`)
+            let encoded = encodeToFlac(downloadedFilePath, `${albumDir}/${metaTrackName}.flac`)
             if (encoded) {
                 console.log(`Encoded to flac`)
                 // delete original file
@@ -176,6 +188,8 @@ async function downloadTrack(track) {
     // post metadata to db
     track.path = relativeSavePath
     track.ext = fileType
+    track.found_album = album ? album.title : null
+    track.trackIndex = album ? album.trackIndex : 0
 
     track = await addBestCoverArt(track)
 
@@ -183,7 +197,7 @@ async function downloadTrack(track) {
 
     await downloadCover(track.coverUrl, coverimage)
 
-    let metaWritten = await writeMetadata(track, `${artistDir}/${metaTrackName}.${fileType}`, coverimage)
+    let metaWritten = await writeMetadata(track, `${albumDir}/${metaTrackName}.${fileType}`, coverimage)
     // remove cover image
     fs.unlinkSync(coverimage)
 
@@ -237,7 +251,18 @@ async function downloadArtist(artistName) {
     let index = 0
     for (let song of artistSongs) {
         // console.log(`Downloading ${artistName} track ${++index} of ${artistSongs.length}`)
-        let songstat = await downloadTrack(song)
+
+        // find out if the track is in an album
+        let album = false
+        for(let alb of albums) {
+            if (alb.tracks.some(track => track.id == song.id)) {
+                album = alb
+                album.trackIndex = alb.tracks.findIndex(track => track.id == song.id)
+                break
+            }
+        }
+
+        let songstat = await downloadTrack(song, album)
         
         // this part is probably a bad idea
         // if (songstat == "retry") {

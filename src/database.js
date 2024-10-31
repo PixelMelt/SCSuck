@@ -55,6 +55,7 @@ async function addSong(data, db){
 		genre: data.genre,
 		tag_list: data.tag_list,
 		user_id: data.user_id, // number
+		trackIndex: data.trackIndex,
 		
 		description: data.description,
 
