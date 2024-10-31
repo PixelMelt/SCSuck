@@ -27,7 +27,7 @@ sudo apt install ffmpeg
 - download any new releases from all artists you added
 - tags downloaded files with correct metadata and covers
 - uses a ridiculus amount of disk space
-- does not bother making full albums, every song is tagged as a single
+- full album folders, every song is tagged as a single or album
 - no checks to stop it from using all of your disk space
 - download all the people a user is following
 
@@ -42,6 +42,5 @@ node src/index.js --help
 
 # Roadmap
 - backups probably
-- album support
 - detect deleted tracks/artists
 - download bandcamp too? maybe out of scope

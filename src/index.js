@@ -11,7 +11,6 @@ PouchDB.plugin(require('pouchdb-find'));
 const database = require("./database.js")
 
 const config = require("./config.json");
-const { ADDRGETNETWORKPARAMS } = require("dns");
 
 makeDir("./DB")
 const sdb = new PouchDB('./DB/SONG_DATABASE', {
@@ -52,7 +51,6 @@ async function addBestCoverArt(track) {
 
 async function writeMetadata(track, trackPath, imagePath) {
     try {
-        // using node-taglib-sharp instead
         let file = taglib.File.createFromPath(trackPath)
         file.tag.albumArtists = [track.user.username]
         file.tag.album = track.found_album ? track.found_album : track.title
