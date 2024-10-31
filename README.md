@@ -1,4 +1,4 @@
-<img align="right" height="400" src="./logo.svg" alt="Logo">
+<img align="right" height="250" src="./logo.svg" alt="Logo">
 
 # SCSuck
 #### Sucks down songs so you dont have to!
