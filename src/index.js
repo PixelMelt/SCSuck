@@ -111,10 +111,10 @@ async function downloadTrack(track, album = false) {
 
     let scSongID = `${artistNamePermalink}/${trackNamePermalink}` // do not use this for saving
 
-    let relativeSavePath = `${artistNamePermalink}/${metaAlbumName}/${metaTrackName}`
+    let relativeSavePath = `${artistNamePermalink}/${albumNamePermalink}/${metaTrackName}`
 
     let artistDir = `${config.outputDir}/${artistNamePermalink}`
-    let albumDir = `${config.outputDir}/${artistNamePermalink}/${metaAlbumName}`
+    let albumDir = `${config.outputDir}/${artistNamePermalink}/${albumNamePermalink}`
     
     makeDir(artistDir)
     makeDir(albumDir)
