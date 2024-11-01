@@ -33,20 +33,38 @@ function sanitizeTrack(name) {
     return name
 }
 
-async function addBestCoverArt(track) {
+async function getBestCoverArt(track) {
     let cover = track.artwork_url ?? track.user.avatar_url // why?
 
     let coverBig = cover.replace("large.jpg", "t500x500.jpg")
-    
+    // console.log(coverBig)
     // check if 500x500 art exists by making an axios request
-    let big = await axios.get(coverBig)
-    // console.log(big)
+    let big;
+    try {
+        big = await axios.get(coverBig)
+    } catch (error) {
+        // console.error('Error getting cover art:', error.data)
+        try {
+            big = await axios.get(track.user.avatar_url) // cant go wrong with more trycatch :)
+            big.status = "artist"
+        } catch (error) {
+            // ah darn, no more images
+            big = {
+                status: "oh darn"
+            }
+        }
+    }
+    
     if (big.status == 200) {
         track.coverUrl = coverBig
+    } else if (big.status == "artist") {
+        track.coverUrl = track.user.avatar_url
+    } else if (big.status == "oh darn") {
+        track.coverUrl = "noimage"
     } else {
         track.coverUrl = cover
     }
-    return track
+    return track.coverUrl
 }
 
 async function writeMetadata(track, trackPath, imagePath) {
@@ -72,6 +90,12 @@ async function writeMetadata(track, trackPath, imagePath) {
 }
 
 async function downloadCover(url, outputFilePath) {
+    if(url == "noimage") {
+        // copy default image from ./src/noimage.jpg to location
+        console.log("fart")
+        fs.copyFileSync("src/noimage.jpg", outputFilePath)
+        return
+    }
     try {
         // Download the PNG image
         const response = await axios({
@@ -119,21 +143,24 @@ async function downloadTrack(track, album = false) {
     makeDir(artistDir)
     makeDir(albumDir)
 
+    // dont download again if we have it
+    if (await database.musicExists(relativeSavePath, sdb)) {
+        // console.log(`Track ${metaTrackName} by ${metaArtistName} already exists in database, skipping`)
+        return
+    }
+
+
     if(album){
         let albumcover = album.artwork_url ?? album.user.avatar_url
         try {
-            await downloadCover(albumcover.replace("large.jpg", "t500x500.jpg"), albumDir+"/cover.jpg")
+            await downloadCover(await getBestCoverArt(album), albumDir+"/cover.jpg")
         } catch (error) {
             console.error(`Error downloading cover for ${metaAlbumName} by ${metaArtistName}`)
             console.error(error)
         }
     }
 
-    // dont download again if we have it
-    if (await database.musicExists(relativeSavePath, sdb)) {
-        // console.log(`Track ${metaTrackName} by ${metaArtistName} already exists in database, skipping`)
-        return
-    }
+    
 
 
     console.log(`Downloading ${metaTrackName} on ${metaAlbumName} by ${metaArtistName}`)
@@ -189,7 +216,7 @@ async function downloadTrack(track, album = false) {
     track.found_album = album ? album.title : null
     track.trackIndex = album ? album.trackIndex : 0
 
-    track = await addBestCoverArt(track)
+    track.coverUrl = await getBestCoverArt(track)
 
     let coverimage = `${artistDir}/${metaTrackName}.jpg`
 
