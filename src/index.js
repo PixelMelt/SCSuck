@@ -255,7 +255,13 @@ async function encodeToFlac(file, outfile) {
 async function downloadArtist(artistName) {
     console.log(`Looking up ${artistName}'s albums`)
     // use this to correctly tag songs that are in albums
-    let albums = await soundcloud.users.albums(artistName)
+    let albums;
+    try {
+        albums = await soundcloud.users.albums(artistName)
+    } catch (error) {
+        console.log(`Error looking up ${artistName}'s albums`)
+        albums = []
+    }
 
     console.log(`Looking up ${artistName}'s tracks`)
     let artistSongs;
