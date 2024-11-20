@@ -39,16 +39,13 @@ async function musicExists(path, db){
             path: { $eq: path }
         }
 	}).catch(err => console.error('Error checking if music exists:', err));
-	// console.log(result)
-	if(result.docs.length > 0){
-		return true
-	}
+
+	if(result.docs.length > 0) return true
+	
 	return false
 }
 
 async function addSong(data, db){
-	// filter out most things
-
 	let song = {
 		id: data.id,
 		created_at: data.created_at,
@@ -60,19 +57,18 @@ async function addSong(data, db){
 		description: data.description,
 
 		title: data.title, // song title, crazy unicodes
-		s_permalink: data.permalink, // song name, normal
+		s_permalink: data.permalink, // song title, normal
 
 		username: data.user.username, // artist name, unicodes
 		a_permalink: data.user.permalink, // artist name, normal
 		
 		path: data.path, // path on disk
 		ext: data.ext, // file extension
-		version: 1 // program version
+		version: 1 // major program version
 	}
 
 	let push = await db.post(song).catch(err => console.error('Error adding song:', err));
 	if(push){
-		// console.log('Added song to database:', song.title);
 		return true
 	}
 	return false

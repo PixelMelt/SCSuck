@@ -15,7 +15,7 @@
     "node-taglib-sharp": "^5.2.3",
     "pouchdb": "^9.0.0",
     "pouchdb-find": "^9.0.0",
-    "soundcloud.ts": "^0.6.2",
+    "soundcloud.ts": "github:PixelMelt/soundcloud.ts",
     "undici": "^6.20.1"
   }
 }

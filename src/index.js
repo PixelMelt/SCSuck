@@ -1,4 +1,4 @@
-const Soundcloud = require("/home/pix/Documents/SCSuck/src/soundcloud.ts/")
+const Soundcloud = require("soundcloud.ts")
 const axios = require('axios');
 const fs = require('fs')
 const taglib = require('node-taglib-sharp')
@@ -29,7 +29,7 @@ async function isValidAccount() {
 }
 
 function sanitizeTrack(name) {
-    name = name.replace(/[\\/:*?\"<>|]/g, "") // same replacement as sc-ts
+    name = name.replace(/[\\/:*?\"\'\`<>|]/g, "") // same replacement as sc-ts
     return name
 }
 
@@ -174,7 +174,7 @@ async function downloadTrack(track, album = false) {
         }
     } catch (error) {
         console.error(error)
-        return "retry"
+        return false
     }
 
 
@@ -190,7 +190,9 @@ async function downloadTrack(track, album = false) {
         case "wav":
 		case "aif":
 		case "aiff":
-		case "m4a": // i get the other two but m4a??
+        case "m4a": // i get the other two but m4a??
+		case "ogg": // what the sigma??
+            
             // re encode to flac
             console.log(`Downloaded uncompressed format, encoding to FLAC...`)
             let encoded = encodeToFlac(downloadedFilePath, `${albumDir}/${metaTrackName}.flac`)
@@ -294,12 +296,6 @@ async function downloadArtist(artistName) {
         }
 
         let songstat = await downloadTrack(song, album)
-        
-        // this part is probably a bad idea
-        // if (songstat == "retry") {
-        //     // add to the end of the list
-        //     artistSongs.push(song)
-        // }
     }
 
 	// add to artist db
@@ -400,7 +396,6 @@ function displayHelp(options) {
     });
 }
 
-// Usage example
 const options = {
     help: {
         shorthand: "h",
@@ -434,35 +429,13 @@ const options = {
 async function main() {
     await database.createSearchIndex(sdb)
     makeDir(config.outputDir)
-    // console.log("Database init")
 
     let parsedArgs = await parseAndExecute(process.argv, options)
-    // console.log(parsedArgs)
-
 
     // If no arguments were provided, display help
     if (Object.keys(parsedArgs).length === 0) {
         displayHelp(options);
     }
-
-
-
-
-    // await downloadTrack("elii4h","movinglikeazombie")
-    // await downloadArtist("taylowi73uy54fbg9uowey5brptack")
-
-    // console.log(await soundcloud.users.tracks("gingaloid"))
-    // await soundcloud.users.tracks("gingaloid")
-
-    // display db contents
-    // let db = await sdb.allDocs({include_docs: true})
-    // for (let i = 0; i < db.rows.length; i++) {
-    // 	console.log(db.rows[i].doc)
-    // }
-    // console.log(await database.searchMusic("elii4h", sdb))
-    // await encodeToFlac("/home/pix/Documents/SCSuck/tracks/dante red - movinglikeazombie (elii4h flip).wav")
-
-    // console.log(await database.searchMusic("man", sdb))
 }
 
 main()
