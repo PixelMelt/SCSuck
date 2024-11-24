@@ -3,7 +3,10 @@
 # SCSuck
 #### Sucks down songs so you dont have to!
 
-SCSuck is a SoundCloud library downloader that helps you automatically download and maintain your entire SoundCloud music collection offline. Think of it like [Deemon](https://github.com/digitalec/deemon) but for soundcloud. This tool lets you download complete artist discographies, keep track of new releases, and organize your music library with proper metadata and album artwork. Perfect for backing up your SoundCloud favorites, following lists, and artist collections in high-quality FLAC format. Features automatic new release detection, full artist library downloads, and bulk following list downloads. A must-have utility for SoundCloud users wanting to maintain an offline music library of their favorite artists and tracks.
+SCSuck is a SoundCloud library downloader that helps you automatically download your entire SoundCloud music collection. Think of it like [Deemon](https://github.com/digitalec/deemon) but for soundcloud.
+
+This tool lets you plug in an artist name and bulk download everything they've produced, it adds them to a database so that you can download new songs from every artist you've collected with a single command without needing to  manually enter names, all with with proper metadata and album artwork.
+Perfect for backing up your SoundCloud following lists, and artist collections.
 
 \> scsuck
 <br>
