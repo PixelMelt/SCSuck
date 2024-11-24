@@ -65,6 +65,9 @@ node src/index.js --help
 - backups probably
 - detect deleted tracks/artists
 - download bandcamp too? maybe out of scope
+- dont use child process
+- command to remove artists from list
+- a hard exclusion list so you dont re add someone by accident?
 
 # Thanks
 - to [Moebits](https://github.com/Moebits/) for their project [Soundcloud.ts](https://github.com/Moebits/soundcloud.ts)
