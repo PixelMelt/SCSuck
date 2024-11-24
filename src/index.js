@@ -2,6 +2,7 @@ const Soundcloud = require("soundcloud.ts")
 const axios = require('axios');
 const fs = require('fs')
 const taglib = require('node-taglib-sharp')
+// const cliProgress = require('cli-progress') // maybe later
 
 const child_process = require('child_process');
 
@@ -24,12 +25,16 @@ const soundcloud = new Soundcloud.default(config.clientId, config.oauthToken)
 
 
 async function isValidAccount() {
-    let user = await soundcloud.me.get()
-    return user.id != null
+    try {
+        let user = await soundcloud.me.get()
+        return user.id != null
+    } catch (error) {
+        return false
+    }
 }
 
 function sanitizeTrack(name) {
-    name = name.replace(/[\\/:*?\"\'\`<>|]/g, "") // same replacement as sc-ts
+    name = name.replace(/[\\/:*?\"\'\`<>|%$!#]/g, "") // same replacement as sc-ts %$!#
     return name
 }
 
@@ -37,7 +42,7 @@ async function getBestCoverArt(track) {
     let cover = track.artwork_url ?? track.user.avatar_url // why?
 
     let coverBig = cover.replace("large.jpg", "t500x500.jpg")
-    // console.log(coverBig)
+
     // check if 500x500 art exists by making an axios request
     let big;
     try {
@@ -50,20 +55,27 @@ async function getBestCoverArt(track) {
         } catch (error) {
             // ah darn, no more images
             big = {
-                status: "oh darn"
+                status: "noimage"
             }
         }
     }
     
-    if (big.status == 200) {
-        track.coverUrl = coverBig
-    } else if (big.status == "artist") {
-        track.coverUrl = track.user.avatar_url
-    } else if (big.status == "oh darn") {
-        track.coverUrl = "noimage"
-    } else {
-        track.coverUrl = cover
+    
+    switch(big.status){
+        case 200:
+            track.coverUrl = coverBig
+            break
+        case "artist":
+            track.coverUrl = track.user.avatar_url
+            break
+        case "noimage":
+            track.coverUrl = "noimage"
+            break
+        default:
+            track.coverUrl = cover
+            break
     }
+
     return track.coverUrl
 }
 
@@ -92,7 +104,6 @@ async function writeMetadata(track, trackPath, imagePath) {
 async function downloadCover(url, outputFilePath) {
     if(url == "noimage") {
         // copy default image from ./src/noimage.jpg to location
-        console.log("fart")
         fs.copyFileSync("src/noimage.jpg", outputFilePath)
         return
     }
@@ -146,9 +157,8 @@ async function downloadTrack(track, album = false) {
     // dont download again if we have it
     if (await database.musicExists(relativeSavePath, sdb)) {
         // console.log(`Track ${metaTrackName} by ${metaArtistName} already exists in database, skipping`)
-        return
+        return "exists"
     }
-
 
     if(album){
         let albumcover = album.artwork_url ?? album.user.avatar_url
@@ -160,10 +170,7 @@ async function downloadTrack(track, album = false) {
         }
     }
 
-    
-
-
-    console.log(`Downloading ${metaTrackName} on ${metaAlbumName} by ${metaArtistName}`)
+    // console.log(`Downloading ${metaTrackName} on ${metaAlbumName} by ${metaArtistName}`)
     let downloadedFilePath;
     try {
         downloadedFilePath = await soundcloud.util.downloadTrack(scSongID, albumDir)
@@ -192,12 +199,13 @@ async function downloadTrack(track, album = false) {
 		case "aiff":
         case "m4a": // i get the other two but m4a??
 		case "ogg": // what the sigma??
+		case "aac": // what the acc??
             
             // re encode to flac
-            console.log(`Downloaded uncompressed format, encoding to FLAC...`)
+            // console.log(`Downloaded uncompressed format, encoding to FLAC...`)
             let encoded = encodeToFlac(downloadedFilePath, `${albumDir}/${metaTrackName}.flac`)
             if (encoded) {
-                console.log(`Encoded to flac`)
+                // console.log(`Encoded to flac`)
                 // delete original file
                 fs.unlinkSync(downloadedFilePath)
                 fileType = "flac"
@@ -256,6 +264,7 @@ async function encodeToFlac(file, outfile) {
 
 async function downloadArtist(artistName) {
     console.log(`Looking up ${artistName}'s albums`)
+
     // use this to correctly tag songs that are in albums
     let albums;
     try {
@@ -279,11 +288,21 @@ async function downloadArtist(artistName) {
 
     // filter for item.user.permalink == artistName
     artistSongs = artistSongs.filter(item => item.user.permalink == artistName)
-    // console.log(artistSongs)
+
+    // let songsbar;
+    // if(artistSongs.length > 0) {
+    //     songsbar = new cliProgress.SingleBar({
+    //         format: '{artname} | {bar} | {percentage}% | {songname} | {value}/{total} tracks',
+    //         barCompleteChar: '\u2588',
+    //         barIncompleteChar: '\u2591',
+    //         clearOnComplete: true,
+    //         hideCursor: false
+    //     });
+    //     songsbar.start(artistSongs.length + 1, 0);
+    // }
 
     let index = 0
     for (let song of artistSongs) {
-        // console.log(`Downloading ${artistName} track ${++index} of ${artistSongs.length}`)
 
         // find out if the track is in an album
         let album = false
@@ -295,11 +314,18 @@ async function downloadArtist(artistName) {
             }
         }
 
+        // songsbar.update(index++, {songname: song.title, artname: artistName})
+
+        // console.log(`Downloading ${artistName} track ${++index} of ${artistSongs.length}`)
+
         let songstat = await downloadTrack(song, album)
     }
 
 	// add to artist db
 	await database.addArtist(artistSc, adb)
+
+    // destroy the prog bar
+    // if(songsbar) songsbar.stop()
 }
 
 async function downloadAllArtists() {
@@ -330,7 +356,8 @@ async function downloadAllArtists() {
 
 async function syncFollowing(userperma){
     try {
-        console.log(`Looking up who ${userperma} is following`)
+        console.log(`Looking up who ${userperma} is following`)     
+
         let following = await soundcloud.users.following(userperma)
         // console.log(following)
         for (let user of following) {
@@ -427,8 +454,22 @@ const options = {
 };
 
 async function main() {
-    await database.createSearchIndex(sdb)
+    try {
+        await database.createSearchIndex(sdb)
+    } catch (err) {
+        if(err.toString().includes("lock")){
+			console.error("Database seems to be unreadable (likely in use by another program).");
+			return
+		}
+		console.error('Error creating index:', err);
+    }
     makeDir(config.outputDir)
+
+    let valid = await isValidAccount()
+    if(!valid){
+        console.log("Invalid Soundcloud account, please check your credentials")
+        return
+    }
 
     let parsedArgs = await parseAndExecute(process.argv, options)
 

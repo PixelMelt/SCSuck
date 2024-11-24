@@ -3,13 +3,13 @@ async function createSearchIndex(db) {
 		index: {
 			fields: ['title', 'artist', 'album']
 		}
-	}).catch(err => console.error('Error creating search index:', err));
+	})
 
 	await db.createIndex({
         index: {
             fields: ['path']  // Dedicated index only for 'id'
         }
-    }).catch(err => console.error('Error creating path index:', err));
+    })
 }
 
 async function searchMusic(query, db) {

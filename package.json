@@ -12,6 +12,7 @@
   "license": "SSPL",
   "dependencies": {
     "child_process": "^1.0.2",
+    "cli-progress": "^3.12.0",
     "node-taglib-sharp": "^5.2.3",
     "pouchdb": "^9.0.0",
     "pouchdb-find": "^9.0.0",
