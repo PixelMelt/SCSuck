@@ -319,6 +319,11 @@ async function downloadArtist(artistName) {
         // console.log(`Downloading ${artistName} track ${++index} of ${artistSongs.length}`)
 
         let songstat = await downloadTrack(song, album)
+
+        // Add delay before next download
+        if (index < artistSongs.length - 1) { // Don't wait after the last song
+            await new Promise(resolve => setTimeout(resolve, config.rateLimitMS))
+        }
     }
 
 	// add to artist db
@@ -454,6 +459,7 @@ const options = {
 };
 
 async function main() {
+
     try {
         await database.createSearchIndex(sdb)
     } catch (err) {

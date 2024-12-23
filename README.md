@@ -24,11 +24,14 @@ probably? maybe? I havent tested it
 - download specific artists
 - held together with duck tape
 - download any new releases from all artists you added
-- tags downloaded files with correct metadata and covers
+- tags downloaded files with correct metadata and covers, should perfectly import to navidrome
 - uses a ridiculus amount of disk space
 - full album folders, every song is tagged as a single or album
 - no checks to stop it from using all of your disk space
 - download all the people a user is following
+- download rate limiting
+
+If you fail to see any of these features working, open an issue immidiately
 
 # Requirements
 `ffmpeg` must be accessable via CLI
@@ -65,9 +68,13 @@ node src/index.js --help
 - backups probably
 - detect deleted tracks/artists
 - download bandcamp too? maybe out of scope
+- locate other artist accounts from connections (and musicbrainz maybe)
 - dont use child process
 - command to remove artists from list
-- a hard exclusion list so you dont re add someone by accident?
+- a hard exclusion list so you dont re add someone by accident
+- a web interface
+- handle sets better
+- multiple concurrent downloads (mught make sc server mad)
 
 # Thanks
 - to [Moebits](https://github.com/Moebits/) for their project [Soundcloud.ts](https://github.com/Moebits/soundcloud.ts)
