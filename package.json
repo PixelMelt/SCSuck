@@ -1,0 +1,28 @@
+{
+	"name": "scsuck",
+	"version": "2.0.0",
+	"description": "\\> scsuck",
+	"type": "module",
+	"scripts": {
+		"start": "bun src/index.ts",
+		"typecheck": "bunx tsc --noEmit",
+		"test": "bun test tests/",
+		"eval:coartists": "bun scripts/eval-coartists.ts",
+		"build": "docker build -t soundcloud-collector ."
+	},
+	"keywords": [],
+	"author": "pixelmelt",
+	"license": "SSPL",
+	"dependencies": {
+		"dotenv": "^16.5.0",
+		"node-taglib-sharp": "^5.2.3",
+		"pg": "^8.13.3",
+		"sanitize-filename": "^1.6.3",
+		"soundcloud.ts": "github:PixelMelt/soundcloud.ts"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.2.0",
+		"@types/pg": "^8.11.0",
+		"typescript": "^5.7.0"
+	}
+}

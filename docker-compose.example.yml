@@ -1,0 +1,157 @@
+services:
+    navidrome:
+        # Off by default — a bare `up -d` skips profiled services.
+        # Start it deliberately with: docker compose up -d navidrome
+        profiles:
+            - navidrome
+        image: deluan/navidrome:latest
+        container_name: navidrome_scsuck
+        user: 1000:1000
+        ports:
+            - '4566:4533'
+        environment:
+            ND_SCANSCHEDULE: 1h
+            ND_LOGLEVEL: info
+            ND_SESSIONTIMEOUT: 8765h
+            ND_BASEURL: ''
+            ND_ENABLESHARING: true
+            ND_SPOTIFY_ID: ''
+            ND_SPOTIFY_SECRET: ''
+            ND_LASTFM_APIKEY: ''
+            ND_LASTFM_SECRET: ''
+        volumes:
+            - './test/navidb:/data'
+            - '/path/to/your/music/library:/music/Soundcloud:ro'
+        restart: unless-stopped
+
+    postgres:
+        image: postgres:16
+        container_name: postgres_scsuck
+        environment:
+            POSTGRES_USER: soundcloud
+            POSTGRES_PASSWORD: soundcloud
+            POSTGRES_DB: soundcloud
+        ports:
+            - '5433:5432'
+        volumes:
+            - ./test/postgres:/var/lib/postgresql/data
+        networks:
+            - song_network
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U soundcloud']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    pgadmin:
+        image: dpage/pgadmin4
+        container_name: pgadmin_scsuck
+        environment:
+            PGADMIN_DEFAULT_EMAIL: admin@example.com
+            PGADMIN_DEFAULT_PASSWORD: changeme
+        ports:
+            - '5051:80'
+        networks:
+            - song_network
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: unless-stopped
+
+    soundcloud-collector:
+        image: soundcloud-collector:latest
+        container_name: soundcloud-collector_scsuck
+        user: 1000:1000
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: 'no' # Don't restart after completion
+        # depends_on only gates `compose up`. Ofelia's weekly job-run, and any bare
+        # `docker start` / `compose restart`, starts this container directly, so the
+        # wait is repeated here or the run dies instantly on ECONNREFUSED.
+        entrypoint:
+            - /bin/sh
+            - -c
+            - |
+                tries=60
+                until pg_isready -h "$$SCS_DB_HOST" -p "$$SCS_DB_PORT" -U "$$SCS_DB_USER" -q; do
+                    tries=$$((tries - 1))
+                    if [ "$$tries" -le 0 ]; then
+                        echo "postgres at $$SCS_DB_HOST:$$SCS_DB_PORT never became ready" >&2
+                        exit 1
+                    fi
+                    echo "Waiting for postgres at $$SCS_DB_HOST:$$SCS_DB_PORT ..."
+                    sleep 2
+                done
+                exec "$$@"
+            - --
+        # Required: setting `entrypoint` clears the image's CMD, so the command the
+        # gate execs has to be named here.
+        command: ['bun', 'src/index.ts']
+        environment:
+            SCS_CLIENT_ID: your_client_id
+            SCS_OAUTH_TOKEN: 2-xxxxxx-xxxxxxxxx-xxxxxxxxxxxxxx
+
+            SCS_TEMP_DIR: /srv/media/scsuck-temp
+            SCS_LIBRARY_DIR: /srv/media/library
+            SCS_BACKUP_DIR: /srv/media/backups
+            SCS_BACKUP_INTERVAL: 24
+            SCS_DISCOVERY_INTERVAL: 6
+
+            SCS_DB_HOST: postgres_scsuck
+            SCS_DB_PORT: 5432
+            SCS_DB_USER: soundcloud
+            SCS_DB_PASSWORD: soundcloud
+            SCS_DB_NAME: soundcloud
+
+            SCS_SYNC_FOLLOWERS: your-soundcloud-username
+            SCS_ADDITIONAL_ARTISTS: ''
+            SCS_EXCLUDE_ARTISTS: ''
+
+            SCS_RATE_LIMIT: 2500
+
+            PUSHOVER_APP_TOKEN: ''
+            PUSHOVER_USER_KEY: ''
+
+            SCS_DEBUG: 'false'
+            SCS_DATADOME_STUB: 'true'
+
+            # SCS_PROXY_HOST: ''
+            # SCS_PROXY_PORT: ''
+            # SCS_PROXY_USERNAME: ''
+            # SCS_PROXY_PASSWORD: ''
+
+        networks:
+            - song_network
+        volumes:
+            # One mount, mirroring the host path: temp and library must sit on the
+            # same mount point or every finished download is a copy+unlink instead
+            # of a rename (EXDEV across separate binds, same underlying fs).
+            - /srv/media:/srv/media
+
+    # The scheduler service
+    scheduler:
+        image: mcuadros/ofelia:latest
+        container_name: scheduler_scsuck
+        depends_on:
+            - soundcloud-collector
+        command: daemon --docker
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        networks:
+            - song_network
+        labels:
+            # Restarts the one-shot collector container on a schedule.
+            # `container` must be the real container name, not the service name.
+            ofelia.job-run.weekly-collect.schedule: '@weekly'
+            ofelia.job-run.weekly-collect.container: 'soundcloud-collector_scsuck'
+        restart: unless-stopped
+
+networks:
+    song_network:
+        driver: bridge
+        # This allows containers to access host machine
+        # Useful for development
+        driver_opts:
+            com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
