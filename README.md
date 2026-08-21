@@ -1,3 +1,5 @@
+![AI SLOP](resources/slop-warning-88x31.png)
+
 <img align="right" height="250" src="./logo.svg" alt="Logo">
 
 <div align="center">
@@ -37,12 +39,12 @@ From: [Soundcloud.ts](https://github.com/Moebits/soundcloud.ts):
 
 > Soundcloud has closed down their API applications, but you are still able to get your client id and oauth token by inspecting the network traffic.
 >
-> -   Go to soundcloud.com and login (skip if you are already logged in)
-> -   Open up the dev tools (Right click -> inspect) and go to the Network tab
-> -   Go to soundcloud.com, and you should see a bunch of requests in the network tab
-> -   Find the request that has the name `session` (you can filter by typing `session` in the filter box) and click on it
-> -   Go to the Payload tab
-> -   You should see your client id in the Query String Parameters section, and your oauth token (`access_token`) in the Request Payload section
+> - Go to soundcloud.com and login (skip if you are already logged in)
+> - Open up the dev tools (Right click -> inspect) and go to the Network tab
+> - Go to soundcloud.com, and you should see a bunch of requests in the network tab
+> - Find the request that has the name `session` (you can filter by typing `session` in the filter box) and click on it
+> - Go to the Payload tab
+> - You should see your client id in the Query String Parameters section, and your oauth token (`access_token`) in the Request Payload section
 
 # How to use
 
@@ -78,54 +80,54 @@ Automatically manage downloading SC artists and have full compatability with nav
 
 ## Backend
 
--   ✅ Docker image (Bun-based, with ffmpeg + pg_dump)
--   ✅ Backup database at specified intervals (`SCS_BACKUP_INTERVAL` hours, checked each run; manual `--backup`)
--   ✅ Specifiy a library update interval (external scheduling: Ofelia in docker-compose via the `ofelia.job-run.weekly-collect.schedule` label, or your own cron — the app is one-shot by design)
--   ✅ Notifications through [Pushover](https://pushover.net/) for expired api keys, fatal errors, and run summaries
+- ✅ Docker image (Bun-based, with ffmpeg + pg_dump)
+- ✅ Backup database at specified intervals (`SCS_BACKUP_INTERVAL` hours, checked each run; manual `--backup`)
+- ✅ Specifiy a library update interval (external scheduling: Ofelia in docker-compose via the `ofelia.job-run.weekly-collect.schedule` label, or your own cron — the app is one-shot by design)
+- ✅ Notifications through [Pushover](https://pushover.net/) for expired api keys, fatal errors, and run summaries
 
 ---
 
--   ✅ Add all the artists a user is following to library
--   ✅ Hard exclusion list so you dont re add an unwanted artist during following import
--   ✅ Command to remove artists from list
+- ✅ Add all the artists a user is following to library
+- ✅ Hard exclusion list so you dont re add an unwanted artist during following import
+- ✅ Command to remove artists from list
 
 ---
 
--   ✅ Detect when downloaded tracks/artists are deleted on soundcloud (marked in DB, files never touched, reversible if they reappear)
--   ✅ Detect when an artist (re-)enables downloads on a track and upgrade the stream-sourced copy to the original file in place (old file removed, artwork revisions carried over)
--   ✅ DRM-only tracks (encrypted-HLS streams only, e.g. some monetized releases) are recorded and skipped instead of failing every run; they are retried automatically if downloads get enabled
--   ➖ Downloads follow the [QF bible](https://wiki.musichoarders.xyz/reference/bibles/the-qf-bible/) scheme
--   ✅ Album support
--   ✅ Download artists discographies at highest quality available to your Soundcloud account (lossless is kept at source bit depth/sample rate, converted to FLAC for a consistent filetype)
--   ✅ Artists can be added to the monitored database and automatically updated with new releases
--   ✅ Encode hifi downloads to .flac
--   ✅ Download rate limiting
--   ✅ Tags downloaded files with metadata and covers from Soundcloud, should perfectly import to the [Navidrome](https://github.com/navidrome/navidrome) music server
+- ✅ Detect when downloaded tracks/artists are deleted on soundcloud (marked in DB, files never touched, reversible if they reappear)
+- ✅ Detect when an artist (re-)enables downloads on a track and upgrade the stream-sourced copy to the original file in place (old file removed, artwork revisions carried over)
+- ✅ DRM-only tracks (encrypted-HLS streams only, e.g. some monetized releases) are recorded and skipped instead of failing every run; they are retried automatically if downloads get enabled
+- ➖ Downloads follow the [QF bible](https://wiki.musichoarders.xyz/reference/bibles/the-qf-bible/) scheme
+- ✅ Album support
+- ✅ Download artists discographies at highest quality available to your Soundcloud account (lossless is kept at source bit depth/sample rate, converted to FLAC for a consistent filetype)
+- ✅ Artists can be added to the monitored database and automatically updated with new releases
+- ✅ Encode hifi downloads to .flac
+- ✅ Download rate limiting
+- ✅ Tags downloaded files with metadata and covers from Soundcloud, should perfectly import to the [Navidrome](https://github.com/navidrome/navidrome) music server
 
 ---
 
--   ✅ Downloads song covers
--   ✅ Saves song cover revisions (dated files in an `artwork/` folder next to the original)
--   ✅ Downloads song banners (when soundcloud exposes one on the track)
--   ✅ Saves song banner revisions
--   ✅ Downloads artist profile picture
--   ✅ Saves artist profile picture revisions
--   ✅ Downloads artist profile banner
--   ✅ Saves artist profile banner revisions
+- ✅ Downloads song covers
+- ✅ Saves song cover revisions (dated files in an `artwork/` folder next to the original)
+- ✅ Downloads song banners (when soundcloud exposes one on the track)
+- ✅ Saves song banner revisions
+- ✅ Downloads artist profile picture
+- ✅ Saves artist profile picture revisions
+- ✅ Downloads artist profile banner
+- ✅ Saves artist profile banner revisions
 
 ---
 
 ### Nice to haves
 
--   ✅ Extract co artists from song titles and descriptions (conservative: explicit feat./ft./featuring/w/ credits and collab lists that include the artist; tagged as extra performers, album artist untouched)
--   ⛔ Multiple concurrent downloads (might make sc server mad)
--   ⛔ Locate other artist accounts from connections (and musicbrainz maybe)
--   ⛔ Download bandcamp too? maybe out of scope
+- ✅ Extract co artists from song titles and descriptions (conservative: explicit feat./ft./featuring/w/ credits and collab lists that include the artist; tagged as extra performers, album artist untouched)
+- ⛔ Multiple concurrent downloads (might make sc server mad)
+- ⛔ Locate other artist accounts from connections (and musicbrainz maybe)
+- ⛔ Download bandcamp too? maybe out of scope
 
 ## NOT NICE, NEEDED
 
--   ✅ Prevent double artist names like "OMFG - OMFG - Dying" (redundant artist prefixes stripped from filenames and title tags)
--   ✅ Prevent long song names from crashing the program (byte-aware truncation applies to file/folder names ONLY — tags always carry the full untruncated title/description)
+- ✅ Prevent double artist names like "OMFG - OMFG - Dying" (redundant artist prefixes stripped from filenames and title tags)
+- ✅ Prevent long song names from crashing the program (byte-aware truncation applies to file/folder names ONLY — tags always carry the full untruncated title/description)
 
 # Ignore the following
 
@@ -145,6 +147,7 @@ bun src/index.ts --merge-dirs
 ```
 
 This will:
+
 - Find all artist IDs with multiple directories
 - Look up the correct current name from the database
 - Merge contents into the correctly-named directory
@@ -162,53 +165,49 @@ Songs are uniquely identified by their: Artists User ID, Track ID and Album ID
 
 Soundcloud artists are allowed to change things about their tracks, to make sure we get everything there are some unconventional things this project will do to store songs:
 
--   If a song that has been downloaded has its **metadata** updated on the artists side then the copy you have will not be updated.
+- If a song that has been downloaded has its **metadata** updated on the artists side then the copy you have will not be updated.
 
--   If a song that has been downloaded has its **sound file contents** updated on the artists side (detected via waveform/duration changes) then another copy will be downloaded with the date of the change in the song title, if the **metadata** has also changed that will be used on the new download instead of the previous metadata
+- If a song that has been downloaded has its **sound file contents** updated on the artists side (detected via waveform/duration changes) then another copy will be downloaded with the date of the change in the song title, if the **metadata** has also changed that will be used on the new download instead of the previous metadata
 
--   If **only** a songs cover changes then it will be added to an artwork folder in the same folder as the original cover and the song with the date of the change added to the filename
+- If **only** a songs cover changes then it will be added to an artwork folder in the same folder as the original cover and the song with the date of the change added to the filename
 
--   Song "Banners" will also be saved to the artwork folder with the same change detection as covers
+- Song "Banners" will also be saved to the artwork folder with the same change detection as covers
 
--   If a song is in an album at the time of download and it is changed to a single later or vice versa, it will stay in its original location and a copy will be made
+- If a song is in an album at the time of download and it is changed to a single later or vice versa, it will stay in its original location and a copy will be made
 
--   To allow for cover art on individual songs in an album as well as the album cover to be saved, albums will have each song's cover art embedded in the audio file, as well as a folder.jpg representing the album cover.
+- To allow for cover art on individual songs in an album as well as the album cover to be saved, albums will have each song's cover art embedded in the audio file, as well as a folder.jpg representing the album cover.
 
 [Soundcloud supported formats](https://help.soundcloud.com/hc/en-us/articles/360039171614-Supported-audio-file-formats)
 
--   Flow for program:
+- Flow for program:
+    - Check database to see if song/album already exists
+        - Songs are uniquely identified by their: Artists User ID, Track ID and Album ID
 
-    -   Check database to see if song/album already exists
+        - If item exists in database
+            - ignore
 
-        -   Songs are uniquely identified by their: Artists User ID, Track ID and Album ID
+    - Download whole album or single track to tempfolder
 
-        -   If item exists in database
-            -   ignore
+    - Convert lossless formats to .flac in the tempfolder
 
-    -   Download whole album or single track to tempfolder
+    - ffprobe all the songs in the album to find Bit depth and sample rate for the album folder name
 
-    -   Convert lossless formats to .flac in the tempfolder
+    - Create the artist and album folders following the naming template
+        - MEDIATYPE will be set to WEB-\<Ext\>
+        - For albums that have varriying source of tracks, the MEDIATYPE of the highest quality track in the album will be used.
+        - For albums that have varriying quality of tracks, the highest quality one will be put in the folder name.
 
-    -   ffprobe all the songs in the album to find Bit depth and sample rate for the album folder name
+    - Process cover art
+        - For singles: Save cover.jpg file alongside the track, do not embed cover art
+        - For albums: Embed cover art in each song file and save album cover as folder.jpg
 
-    -   Create the artist and album folders following the naming template
+    - Write metadata to the audio files (title, artist, album, track number, etc.)
 
-        -   MEDIATYPE will be set to WEB-\<Ext\>
-        -   For albums that have varriying source of tracks, the MEDIATYPE of the highest quality track in the album will be used.
-        -   For albums that have varriying quality of tracks, the highest quality one will be put in the folder name.
+    - Move the processed files from tempfolder to the final music folder structure
 
-    -   Process cover art
+    - Clean up tempfolder
 
-        -   For singles: Save cover.jpg file alongside the track, do not embed cover art
-        -   For albums: Embed cover art in each song file and save album cover as folder.jpg
-
-    -   Write metadata to the audio files (title, artist, album, track number, etc.)
-
-    -   Move the processed files from tempfolder to the final music folder structure
-
-    -   Clean up tempfolder
-
-    -   Update the database with the new tracks
+    - Update the database with the new tracks
 
 ```
 Template (soundcloud has no disc concept, so track numbers are flat):
