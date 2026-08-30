@@ -4,8 +4,6 @@
 
 <div align="center">
 
-![warning](https://img.shields.io/badge/WARNING-Alpha_Software-orange) ![warning](https://img.shields.io/badge/DONT_TRUST-Me_To_Keep_This_Working-purple) ![warning](https://img.shields.io/badge/STAR-It_To_Motivate_Me-yellow)
-
 </div>
 
 ## Personal software, expect sweeping changes with no migration pipelines
@@ -68,7 +66,7 @@ bun test                              # run the unit tests
 bunx tsc --noEmit                     # typecheck
 ```
 
-Downloads run per artist: each artist is discovered and downloaded immediately before moving to the next, so freshly issued download URLs are used right away (DataDome is watching).
+Downloads run per artist: each artist is discovered and downloaded immediately before moving to the next, so freshly issued download URLs are used right away.
 
 Runs resume: an artist only counts as "checked" after a clean discover+download cycle, and artists checked within the last `SCS_DISCOVERY_INTERVAL` hours (default 6, 0 disables) are skipped — so rerunning after an interruption continues where it stopped instead of re-crawling everyone. `-r <artist>` always forces a refresh.
 
@@ -117,19 +115,17 @@ Automatically manage downloading SC artists and have full compatability with nav
 
 ---
 
+- ✅ Prevent double artist names like "OMFG - OMFG - Dying" (redundant artist prefixes stripped from filenames and title tags)
+- ✅ Prevent long song names from crashing the program (byte-aware truncation applies to file/folder names ONLY — tags always carry the full untruncated title/description)
+
+---
+
 ### Nice to haves
 
 - ✅ Extract co artists from song titles and descriptions (conservative: explicit feat./ft./featuring/w/ credits and collab lists that include the artist; tagged as extra performers, album artist untouched)
 - ⛔ Multiple concurrent downloads (might make sc server mad)
 - ⛔ Locate other artist accounts from connections (and musicbrainz maybe)
 - ⛔ Download bandcamp too? maybe out of scope
-
-## NOT NICE, NEEDED
-
-- ✅ Prevent double artist names like "OMFG - OMFG - Dying" (redundant artist prefixes stripped from filenames and title tags)
-- ✅ Prevent long song names from crashing the program (byte-aware truncation applies to file/folder names ONLY — tags always carry the full untruncated title/description)
-
-# Ignore the following
 
 ## Artist Name Changes
 

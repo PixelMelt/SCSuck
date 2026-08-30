@@ -18,7 +18,7 @@
 		"node-taglib-sharp": "^5.2.3",
 		"pg": "^8.13.3",
 		"sanitize-filename": "^1.6.3",
-		"soundcloud.ts": "github:PixelMelt/soundcloud.ts"
+		"soundcloud.ts": "github:PixelMelt/soundcloud.ts#ef5b287ed0557b73d3a8c00d82f4d38738b40c5e"
 	},
 	"devDependencies": {
 		"@types/bun": "^1.2.0",

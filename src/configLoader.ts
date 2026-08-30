@@ -44,7 +44,6 @@ export function loadConfig(): Config {
 		proxyPassword: { env: 'SCS_PROXY_PASSWORD', default: null },
 
 		debug: { env: 'SCS_DEBUG', type: 'boolean', default: false },
-		datadomeStub: { env: 'SCS_DATADOME_STUB', type: 'boolean', default: false },
 
 		pushover: {
 			appToken: { env: 'PUSHOVER_APP_TOKEN', default: null },

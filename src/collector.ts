@@ -111,13 +111,6 @@ class SoundcloudCollector {
 			console.log(`Using proxy: ${proxy.replace(/\/\/.*@/, '//***@')}`);
 		}
 		const soundcloud = new Soundcloud(config.clientId, config.oauthToken, scOptions);
-		if (config.datadomeStub) {
-			(soundcloud.api as unknown as { ensureDD: () => Promise<void> }).ensureDD =
-				async () => {};
-			console.log(' -> DataDome proactive solve stubbed (SCS_DATADOME_STUB)');
-		}
-
-		soundcloud.api.headers['Authorization'] = `OAuth ${config.oauthToken}`;
 
 		const database = new Database(config.database, config.debug);
 		await database.connect();

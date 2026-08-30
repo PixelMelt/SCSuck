@@ -26,8 +26,8 @@ Missing mock-based tests are not a finding.
 ## D4 — Sequential processing is a feature
 
 No worker pools, no concurrent downloads, no batching of API calls beyond
-what a single listing endpoint returns. DataDome/rate-limit avoidance
-outweighs throughput. Do not propose parallelism.
+what a single listing endpoint returns. Rate-limit avoidance outweighs
+throughput. Do not propose parallelism.
 
 ## D5 — `withQuietLibLogs` console swap is accepted
 
@@ -175,11 +175,11 @@ Resolving a transcoding URL requires the `Authorization: OAuth` header and,
 when the track object carries one, its `track_authorization` JWT (gated
 uploads mint it on authed track fetches). The fork's `getStreamLink` omits
 `track_authorization`, so `hlsStreams.ts` (formerly `encryptedHls.ts`)
-resolves via the fork's `api.getURL` with the JWT as an extra param — that
-path keeps the wreq-js TLS fingerprint, proxy support and reactive DataDome
-retry; raw `fetch` of the resolve endpoint gets intermittently challenged
-(401 bursts) under load. A resolve 404 is only a valid tombstone verdict
-under this full auth shape — re-verified against a label upload whose clear
+resolves via the fork's `api.getURL` with the JWT as an extra param. That path
+keeps the API client's `client_id`, OAuth query/header and proxy behavior
+together; a bare `fetch` without the full auth shape gets intermittent 401s
+under load. A resolve 404 is only a valid tombstone verdict under this full
+auth shape — re-verified against a label upload whose clear
 variants 404 and whose encrypted variants license-gate even with header +
 JWT, so D18's boundary stands. The download
 fallback chain is progressive/original (fork) → clear `hls` (unencrypted
@@ -272,18 +272,17 @@ same URL rewrites the same bytes. Do not propose dropping the tag back to
 date-only, and do not propose exclusive-create — the deterministic name
 already makes retries idempotent.
 
-## D28 — The static-header OAuth patch in `create()` is load-bearing
+## D28 — `soundcloud.ts` stays pinned to the solver-free fork revision
 
-`collector.ts` writes `Authorization: OAuth <token>` into the fork's static
-`API.headers` after constructing the client. This is NOT obsolete: the fork
-sets Authorization per-request only in `API.requestHeaders()`, and the static
-`API.headers` template it exposes through the `api.headers` getter has no
-Authorization entry at all. `entities/Util.js` (which backs
-`util.downloadTrack`), `entities/Tracks.js`, `entities/Playlists.js` and
-`entities/Resolve.js` all read `this.api.headers` — the unauthenticated
-template. Removing the patch reintroduces 401s on stream-link resolution.
-Verified against the pinned fork in node_modules. Do not propose removing it
-without re-reading `dist/API.js` and `dist/entities/Util.js` first.
+The dependency is pinned to PixelMelt/soundcloud.ts commit `ef5b287`: it is the
+last revision before the DataDome solver binary, cookie state, TLS-session
+hooks and proactive/reactive solve paths entered the fork. Moebits master is
+not a drop-in replacement: it lacks `users.albums`, the pure-numeric resolver
+fix required by D56, and the download availability, redirect, error and
+filename handling used by `TrackProcessor`. The pinned revision retains those
+features and sets the static Authorization header in the API constructor.
+Do not advance the fork past this commit or switch to Moebits until those
+application dependencies have moved behind SCSuck-owned boundaries.
 
 ## D29 — `AudioQuality` is a single probe report, not two sources of truth
 

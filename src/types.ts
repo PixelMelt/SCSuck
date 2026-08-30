@@ -52,7 +52,6 @@ export interface Config {
 	proxyUsername: string | null;
 	proxyPassword: string | null;
 	debug: boolean;
-	datadomeStub: boolean;
 	pushover: PushoverConfig;
 	database: DatabaseConfig;
 }

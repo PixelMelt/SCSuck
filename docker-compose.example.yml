@@ -115,7 +115,6 @@ services:
             PUSHOVER_USER_KEY: ''
 
             SCS_DEBUG: 'false'
-            SCS_DATADOME_STUB: 'true'
 
             # SCS_PROXY_HOST: ''
             # SCS_PROXY_PORT: ''
