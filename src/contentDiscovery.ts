@@ -216,7 +216,7 @@ class ContentDiscovery {
 							queueEnriched(enrichedTrack, albumContext);
 						} else if (existing.skip_reason === 'drm-only') {
 							console.log(
-								` -> Previously skipped track "${track.title}" predates encrypted-HLS support, queueing`,
+								` -> Previously skipped track "${track.title}" is flagged for one retry, queueing`,
 							);
 							newCount++;
 							queueEnriched(enrichedTrack, albumContext);

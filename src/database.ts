@@ -205,6 +205,22 @@ class Database {
 		return rows;
 	}
 
+	async getEncryptionRecoveryArtists(): Promise<ArtistRow[]> {
+		return (
+			await this
+				.query<ArtistRow>(`SELECT a.* FROM artists a WHERE a.is_active = TRUE AND EXISTS (
+			SELECT 1 FROM tracks t WHERE t.user_id = a.id AND t.skip_reason IN ('drm-only', 'drm-unrecoverable')
+		) ORDER BY a.username`)
+		).rows;
+	}
+
+	async requeueEncryptionFailures(): Promise<number> {
+		return (
+			await this.query(`UPDATE tracks SET skip_reason = 'drm-only'
+			WHERE skip_reason = 'drm-unrecoverable' AND file_path IS NULL`)
+		).rowCount!;
+	}
+
 	async removeArtist(id: number | string): Promise<void> {
 		await this.query('DELETE FROM artists WHERE id = $1', [id]);
 	}

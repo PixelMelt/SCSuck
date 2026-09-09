@@ -30,6 +30,7 @@ if (clear.success) {
 		track,
 		'scripts/dump',
 		`proof_${trackId}`,
+		null,
 	);
 	if (encrypted.success) {
 		console.log(

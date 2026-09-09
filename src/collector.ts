@@ -25,6 +25,18 @@ interface RunSummary {
 	errors: string[];
 }
 
+function newRunSummary(): RunSummary {
+	return {
+		newTracks: 0,
+		upgradedTracks: 0,
+		deletedTracks: 0,
+		skippedTracks: 0,
+		inactiveArtists: [],
+		artworkRevisions: 0,
+		errors: [],
+	};
+}
+
 export function buildProxyUrl(config: Config): string | null {
 	const { proxyHost, proxyPort, proxyUsername, proxyPassword } = config;
 	const components = [proxyPort, proxyUsername, proxyPassword];
@@ -155,7 +167,12 @@ class SoundcloudCollector {
 		);
 		const stopController = new AbortController();
 		const jobProcessor = new JobProcessor(
-			new TrackProcessor(soundcloud, config.tempDir, config.debug),
+			new TrackProcessor(
+				soundcloud,
+				config.tempDir,
+				config.debug,
+				config.decryptionServiceUrl,
+			),
 			new FileOrganizer(config.outputDir, config.tempDir),
 			database,
 			config.rateLimitMS,
@@ -296,6 +313,36 @@ class SoundcloudCollector {
 		}
 	}
 
+	async retryEncrypted(): Promise<void> {
+		if (!this.config.decryptionServiceUrl) {
+			throw new Error('SCS_DECRYPTION_SERVICE_URL is required for encryption recovery');
+		}
+		const health = await fetch(new URL('/health', this.config.decryptionServiceUrl), {
+			signal: AbortSignal.timeout(10_000),
+		});
+		if (!health.ok) throw new Error(`Decryption service is unavailable: HTTP ${health.status}`);
+		const requeued = await this.database.requeueEncryptionFailures();
+		const artists = await this.database.getEncryptionRecoveryArtists();
+		console.log(
+			`Encryption recovery: ${requeued} skip(s) requeued across ${artists.length} artist(s)`,
+		);
+		const summary = newRunSummary();
+		for (const artist of artists) {
+			if (this.stopController.signal.aborted) {
+				console.log('\nStop requested; leaving the remaining artists for the next run.');
+				break;
+			}
+			if (this.isExcluded(artist)) {
+				console.log(`Skipping excluded artist during recovery: ${artist.username}`);
+				continue;
+			}
+			console.log(`\nRecovering ${artist.username} [${artist.id}]`);
+			await this.updateArtist(artist, summary);
+			await new Promise((resolve) => setTimeout(resolve, this.config.rateLimitMS));
+		}
+		await this.sendRunSummary(summary);
+	}
+
 	async syncUserFollowing(userId: string): Promise<void> {
 		console.log(`Syncing following list for user ID ${userId}`);
 
@@ -357,15 +404,7 @@ class SoundcloudCollector {
 				: 'Running update cycle for all monitored artists',
 		);
 
-		const summary: RunSummary = {
-			newTracks: 0,
-			upgradedTracks: 0,
-			deletedTracks: 0,
-			skippedTracks: 0,
-			inactiveArtists: [],
-			artworkRevisions: 0,
-			errors: [],
-		};
+		const summary = newRunSummary();
 
 		let artists: ArtistRow[];
 		if (specificArtist) {

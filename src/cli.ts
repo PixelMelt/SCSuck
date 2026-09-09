@@ -15,13 +15,14 @@ Discovery & Download:
 
 Maintenance:
   --backup                     Back up the database now
+  --retry-encrypted            Retry tracks previously skipped for encryption
   --merge-dirs                 Merge duplicate artist directories
   -h, --help                   Display this help information`;
 
 export type Command =
 	| { name: 'artist' | 'delete' | 'following'; value: string }
 	| { name: 'refresh'; value: string | null }
-	| { name: 'list' | 'backup' | 'merge-dirs' | 'run' };
+	| { name: 'list' | 'backup' | 'merge-dirs' | 'run' | 'retry-encrypted' };
 
 type Arity = 'required' | 'optional' | 'none';
 
@@ -37,6 +38,7 @@ const COMMANDS: Record<string, { name: Command['name']; arity: Arity }> = {
 	'-r': { name: 'refresh', arity: 'optional' },
 	'--refresh': { name: 'refresh', arity: 'optional' },
 	'--backup': { name: 'backup', arity: 'none' },
+	'--retry-encrypted': { name: 'retry-encrypted', arity: 'none' },
 	'--merge-dirs': { name: 'merge-dirs', arity: 'none' },
 	'--run': { name: 'run', arity: 'none' },
 };

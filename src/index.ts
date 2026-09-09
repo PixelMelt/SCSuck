@@ -23,6 +23,9 @@ async function dispatch(collector: SoundcloudCollector, command: Command): Promi
 		case 'backup':
 			await collector.backupNow();
 			break;
+		case 'retry-encrypted':
+			await collector.retryEncrypted();
+			break;
 		case 'merge-dirs':
 			await collector.mergeDuplicateDirectories();
 			break;

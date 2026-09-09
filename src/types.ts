@@ -36,6 +36,7 @@ export interface PushoverConfig {
 }
 
 export interface Config {
+	decryptionServiceUrl: string | null;
 	clientId: string;
 	oauthToken: string;
 	tempDir: string;
@@ -54,6 +55,11 @@ export interface Config {
 	debug: boolean;
 	pushover: PushoverConfig;
 	database: DatabaseConfig;
+}
+
+export interface DecryptionRequest {
+	url: string;
+	licenseAuthToken: string;
 }
 
 export interface EnrichedTrack extends SoundcloudTrack {

@@ -1,4 +1,14 @@
 services:
+    decryption:
+        build:
+            context: .
+            dockerfile: services/decryption/Dockerfile
+        image: scsuck-decryption:local
+        platform: linux/amd64
+        restart: unless-stopped
+        shm_size: 512mb
+        networks:
+            - song_network
     navidrome:
         # Off by default — a bare `up -d` skips profiled services.
         # Start it deliberately with: docker compose up -d navidrome
@@ -64,6 +74,8 @@ services:
         container_name: soundcloud-collector_scsuck
         user: 1000:1000
         depends_on:
+            decryption:
+                condition: service_healthy
             postgres:
                 condition: service_healthy
         restart: 'no' # Don't restart after completion
@@ -90,6 +102,7 @@ services:
         # gate execs has to be named here.
         command: ['bun', 'src/index.ts']
         environment:
+            SCS_DECRYPTION_SERVICE_URL: http://decryption:8080
             SCS_CLIENT_ID: your_client_id
             SCS_OAUTH_TOKEN: 2-xxxxxx-xxxxxxxxx-xxxxxxxxxxxxxx
 

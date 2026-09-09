@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import { getTrackBannerUrl, nonDefaultAvatarUrl, saveImage } from './coverArtProcessor.ts';
+import {
+	getTrackBannerUrl,
+	nonDefaultAvatarUrl,
+	saveBanner,
+	saveImage,
+} from './coverArtProcessor.ts';
 import { artistDirName, formatDateStamp, pathExists, resolveStoredTrackPath } from './utils.ts';
 import type Database from './database.ts';
 import type { ArtistRow, SoundcloudTrack, SoundcloudUser, TrackRow } from './types.ts';
@@ -48,6 +53,7 @@ class ArtworkManager {
 			revisionDir,
 			'avatar',
 			`avatar for ${artist.username}`,
+			saveImage,
 		);
 
 		const banner = await this.processImageSlot(
@@ -57,6 +63,7 @@ class ArtworkManager {
 			revisionDir,
 			'banner',
 			`banner for ${artist.username}`,
+			saveBanner,
 		);
 
 		await this.database.updateArtistImages(artist.id, avatar.ackUrl, banner.ackUrl);
@@ -70,13 +77,14 @@ class ArtworkManager {
 		revisionDir: string,
 		revisionPrefix: string,
 		label: string,
+		save: typeof saveImage,
 	): Promise<{ revisions: number; ackUrl: string | null }> {
 		if (apiUrl && !(await pathExists(originalPath))) {
-			const saved = await saveImage(apiUrl, originalPath);
+			const saved = await save(apiUrl, originalPath);
 			if (saved) console.log(` -> Saved ${path.basename(originalPath)} (${label})`);
 			return { revisions: 0, ackUrl: apiUrl };
 		}
-		return this.revisionSlot(apiUrl, storedUrl, revisionDir, revisionPrefix, label);
+		return this.revisionSlot(apiUrl, storedUrl, revisionDir, revisionPrefix, label, save);
 	}
 
 	private async revisionSlot(
@@ -85,12 +93,13 @@ class ArtworkManager {
 		revisionDir: string,
 		revisionPrefix: string,
 		label: string,
+		save: typeof saveImage,
 	): Promise<{ revisions: number; ackUrl: string | null }> {
 		if (!apiUrl) return { revisions: 0, ackUrl: storedUrl };
 		if (storedUrl == null || storedUrl === apiUrl) return { revisions: 0, ackUrl: apiUrl };
 
 		const revisionPath = path.join(revisionDir, revisionFileName(revisionPrefix, apiUrl));
-		const saved = await saveImage(apiUrl, revisionPath);
+		const saved = await save(apiUrl, revisionPath);
 		if (!saved) return { revisions: 0, ackUrl: storedUrl };
 		console.log(` -> Saved image revision ${path.basename(revisionPath)} (${label})`);
 		return { revisions: 1, ackUrl: apiUrl };
@@ -110,6 +119,7 @@ class ArtworkManager {
 			revisionDir,
 			`cover-${apiTrack.id}`,
 			`cover for ${apiTrack.title}`,
+			saveImage,
 		);
 		const banner = await this.revisionSlot(
 			getTrackBannerUrl(apiTrack),
@@ -117,6 +127,7 @@ class ArtworkManager {
 			revisionDir,
 			`banner-${apiTrack.id}`,
 			`banner for ${apiTrack.title}`,
+			saveBanner,
 		);
 
 		if (artwork.ackUrl !== trackRow.artwork_url || banner.ackUrl !== trackRow.banner_url) {

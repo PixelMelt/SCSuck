@@ -598,3 +598,47 @@ malformed command costs no database connection. `index.ts` keeps only the
 process lifecycle: signals, the fatal handler, shutdown. The split is what
 makes the parser testable (`tests/cli.test.ts`) without executing `main()`.
 Do not fold the parser back into `index.ts`.
+
+## D59 — Widevine AAC decryption runs in a separate container
+
+The user requested production integration after the standalone encrypted-only
+decryption proof. This supersedes D18's prohibition on a CDM download path.
+Original/progressive, clear HLS, and identity-key HLS remain in the collector.
+When configured, the Widevine sidecar receives only the resolved CDN URL and
+license authorization token and returns a fully decode-validated M4A. Account
+credentials, database state, and library paths remain owned by the collector.
+
+The sidecar runs one job at a time in a temporary Chrome process group. Chrome
+and the Widevine binary are pinned to the tested adapter; startup rejects a
+different CDM hash. The supported DRM surface is finite, single-init Widevine
+AAC-LC HLS without byte ranges or discontinuities. FairPlay/PlayReady-only
+renditions remain unsupported.
+
+The sidecar is consulted at most once per track. `downloadEncryptedHls` walks
+the encrypted renditions (the sidecar-capable `ctr` protocol first when a
+service is configured) and the first one whose manifest carries a Widevine key
+is handed off; the sidecar's answer is the verdict for the whole encrypted path.
+Every sidecar-path failure — unreachable, non-2xx, undecodable output — is
+`permanent`, so the track records `drm-unrecoverable` (D41's `sawRetryable`
+still applies when an earlier stream in the chain failed transiently). The
+alternative, a retryable verdict, made a `drm-only` row that keeps failing get
+re-queued by discovery every run, each attempt costing a headless-Chrome
+launch, and never converge. Renditions the sidecar did not see keep the AND
+rule for permanence.
+
+Recovery is explicit and never blanket. There is no migration that flips DRM
+rows for the sidecar generation: a database without a sidecar keeps its skips,
+and a misconfigured sidecar re-buries them in one pass instead of re-queueing
+them forever. `--retry-encrypted` refuses to start without a configured,
+healthy service, then flips `drm-unrecoverable` back to `drm-only` and runs
+the ordinary per-artist update cycle (`updateArtist`) for every active artist
+that holds such rows. It does not filter the queue to those keys: discovery
+acknowledges sound changes at detection time (D7), so a revision job dropped
+by a filter would be lost, and the unfiltered cycle is what the next run would
+do for those artists anyway. Do not reintroduce a startup requeue migration or
+a key-filtered recovery queue.
+
+Pure manifest parsing (`parseMediaPlaylist`, key-method and license-delivery
+classification) lives in `hlsPlaylist.ts`, which imports nothing but types, so
+the sidecar image copies it and `types.ts` without the collector's dependency
+tree. `hlsStreams.ts` keeps resolution, ffmpeg and the download chain.

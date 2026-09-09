@@ -1,4 +1,5 @@
 node_modules/
+database-before-encryption-recovery-*.dump
 src/cookies.txt
 src/config.json
 music_index_db/
@@ -18,3 +19,5 @@ temp/
 library/
 bun.lockb
 DECISIONS.md
+artifacts
+scripts

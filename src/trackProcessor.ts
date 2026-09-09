@@ -8,7 +8,7 @@ import {
 	clearHlsTranscoding,
 	downloadClearHls,
 	downloadEncryptedHls,
-	encryptedHlsTranscoding,
+	encryptedHlsTranscodings,
 } from './hlsStreams.ts';
 import type {
 	AudioQuality,
@@ -28,21 +28,34 @@ class TrackProcessor {
 	private soundcloud: SoundcloudClient;
 	private tempDir: string;
 	private debug: boolean;
+	private decryptionServiceUrl: string | null;
 
-	constructor(soundcloud: SoundcloudClient, tempDir: string, debug: boolean) {
+	constructor(
+		soundcloud: SoundcloudClient,
+		tempDir: string,
+		debug: boolean,
+		decryptionServiceUrl: string | null,
+	) {
 		this.soundcloud = soundcloud;
 		this.tempDir = tempDir;
 		this.debug = debug;
+		this.decryptionServiceUrl = decryptionServiceUrl;
 	}
 
 	private async withQuietLibLogs<T>(fn: () => Promise<T>): Promise<T> {
 		if (this.debug) return fn();
 		const originalLog = console.log;
+		const originalError = console.error;
 		console.log = () => {};
+		console.error = (...args: unknown[]) =>
+			originalError(
+				...args.map((value) => (value instanceof Error ? errorMessage(value) : value)),
+			);
 		try {
 			return await fn();
 		} finally {
 			console.log = originalLog;
+			console.error = originalError;
 		}
 	}
 
@@ -56,6 +69,7 @@ class TrackProcessor {
 			track,
 			this.tempDir,
 			trackKey,
+			this.decryptionServiceUrl,
 		);
 		if (!encrypted.success) {
 			return {
@@ -83,7 +97,7 @@ class TrackProcessor {
 			}
 			console.error(` -> Clear HLS failed (${clear.message})`);
 			if (!clear.permanent) sawRetryable = true;
-			if (!encryptedHlsTranscoding(track)) {
+			if (!encryptedHlsTranscodings(track).length) {
 				return {
 					success: false,
 					skipReason: sawRetryable ? null : 'drm-unrecoverable',
@@ -116,7 +130,7 @@ class TrackProcessor {
 					message: `Original-file upgrade failed for ${track.title} [${track.id}]: ${message}`,
 				};
 			}
-			if (!clearHlsTranscoding(track) && !encryptedHlsTranscoding(track)) {
+			if (!clearHlsTranscoding(track) && !encryptedHlsTranscodings(track).length) {
 				return {
 					success: false,
 					skipReason: streamSkipReason,

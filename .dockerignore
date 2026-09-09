@@ -1,0 +1,9 @@
+**
+!package.json
+!bun.lock
+!tsconfig.json
+!src/
+!src/**
+!services/
+!services/decryption/
+!services/decryption/**

@@ -24,6 +24,7 @@ function isSpecEntry(node: SpecEntry | SpecNode): node is SpecEntry {
 
 export function loadConfig(): Config {
 	const configSpec = {
+		decryptionServiceUrl: { env: 'SCS_DECRYPTION_SERVICE_URL', default: null },
 		clientId: { env: 'SCS_CLIENT_ID', required: true },
 		oauthToken: { env: 'SCS_OAUTH_TOKEN', required: true },
 		tempDir: { env: 'SCS_TEMP_DIR', default: './temp' },

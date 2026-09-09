@@ -126,9 +126,20 @@ export function resolveTrackCoverUrl(
 }
 
 export async function saveImage(imageUrl: string, outputPath: string): Promise<boolean> {
+	return saveImageResponse(imageUrl, outputPath, await getLargestImageVariant(imageUrl));
+}
+
+export async function saveBanner(imageUrl: string, outputPath: string): Promise<boolean> {
+	return saveImageResponse(imageUrl, outputPath, await fetchImage(imageUrl));
+}
+
+async function saveImageResponse(
+	imageUrl: string,
+	outputPath: string,
+	response: Response | null,
+): Promise<boolean> {
 	const stagedPath = `${outputPath}.partial`;
 	try {
-		const response = await getLargestImageVariant(imageUrl);
 		if (!response) {
 			console.log(`No image obtained for ${outputPath} from ${imageUrl}`);
 			return false;

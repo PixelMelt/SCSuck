@@ -14,7 +14,12 @@ import {
 	sanitizeNameComponent,
 	truncateToBytes,
 } from './utils.ts';
-import { getTrackBannerUrl, resolveTrackCoverUrl, saveImage } from './coverArtProcessor.ts';
+import {
+	getTrackBannerUrl,
+	resolveTrackCoverUrl,
+	saveBanner,
+	saveImage,
+} from './coverArtProcessor.ts';
 import { displayTitle } from './titleParser.ts';
 import type {
 	AudioQuality,
@@ -250,7 +255,7 @@ class FileOrganizer {
 			const bannerUrl = getTrackBannerUrl(track);
 			const bannerPath = path.join(singleDir, 'banner.jpg');
 			if (bannerUrl && !(await pathExists(bannerPath))) {
-				const saved = await saveImage(bannerUrl, bannerPath);
+				const saved = await saveBanner(bannerUrl, bannerPath);
 				if (saved) console.log(` -> Saved banner.jpg for single track ${track.title}`);
 			}
 
@@ -409,7 +414,7 @@ class FileOrganizer {
 					if (bannerUrl) {
 						const bannerPath = path.join(albumDir, 'artwork', `banner-${track.id}.jpg`);
 						if (!(await pathExists(bannerPath))) {
-							const saved = await saveImage(bannerUrl, bannerPath);
+							const saved = await saveBanner(bannerUrl, bannerPath);
 							if (saved) createdFiles.push(bannerPath);
 						}
 					}

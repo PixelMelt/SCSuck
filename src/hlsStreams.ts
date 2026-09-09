@@ -3,9 +3,16 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { cleanupFile, errorMessage } from './utils.ts';
+import {
+	isSupportedKeyMethod,
+	licenseDelivery,
+	parseMediaPlaylist,
+	playlistKeyMethod,
+	widevineKeyLines,
+} from './hlsPlaylist.ts';
 import type {
 	HlsDownloadResult,
-	MediaPlaylist,
+	DecryptionRequest,
 	SoundcloudClient,
 	SoundcloudTrack,
 	SoundcloudTranscoding,
@@ -14,14 +21,13 @@ import type {
 const execFileAsync = promisify(execFile);
 
 const PREFERRED_PROTOCOLS = ['cbc-encrypted-hls', 'ctr-encrypted-hls'];
-const SUPPORTED_KEY_METHODS = ['AES-128', 'SAMPLE-AES'];
 
-export function encryptedHlsTranscoding(track: SoundcloudTrack): SoundcloudTranscoding | null {
-	for (const protocol of PREFERRED_PROTOCOLS) {
-		const match = track.media.transcodings.find((t) => t.format.protocol === protocol);
-		if (match) return match;
-	}
-	return null;
+export function encryptedHlsTranscodings(track: SoundcloudTrack): SoundcloudTranscoding[] {
+	return track.media.transcodings.filter(
+		(t) =>
+			PREFERRED_PROTOCOLS.includes(t.format.protocol) &&
+			t.format.mime_type !== 'audio/mpegurl',
+	);
 }
 
 export function clearHlsTranscoding(track: SoundcloudTrack): SoundcloudTranscoding | null {
@@ -32,46 +38,6 @@ export function clearHlsTranscoding(track: SoundcloudTrack): SoundcloudTranscodi
 	const rank = (t: SoundcloudTranscoding) =>
 		(t.quality === 'sq' ? 0 : 10) + (t.format.mime_type.includes('mp4') ? 0 : 1);
 	return candidates.sort((a, b) => rank(a) - rank(b))[0]!;
-}
-
-export function playlistKeyMethod(playlist: string): string | null {
-	const keyLine = playlist.split('\n').find((line) => line.startsWith('#EXT-X-KEY:'));
-	return /METHOD=([^,]+)/.exec(keyLine ?? '')?.[1] ?? null;
-}
-
-export function isSupportedKeyMethod(method: string | null): boolean {
-	return method === null || SUPPORTED_KEY_METHODS.includes(method);
-}
-
-export function licenseDelivery(playlist: string): string | null {
-	const keyLines = playlist.split('\n').filter((line) => line.startsWith('#EXT-X-KEY:'));
-	for (const line of keyLines) {
-		if (/URI="skd:\/\//.test(line)) return 'FairPlay (skd://)';
-		if (/KEYFORMAT="com\.microsoft\.playready"/i.test(line)) return 'PlayReady';
-		if (/KEYFORMAT="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"/i.test(line))
-			return 'Widevine (cenc PSSH)';
-	}
-	return null;
-}
-
-export function parseMediaPlaylist(playlist: string, baseUrl: string): MediaPlaylist {
-	let keyUri: string | null = null;
-	let initUri: string | null = null;
-	const segmentUris: string[] = [];
-	for (const line of playlist.split('\n').map((l) => l.trim())) {
-		if (line.startsWith('#EXT-X-KEY:')) {
-			if (!keyUri) {
-				const uri = /URI="([^"]+)"/.exec(line)?.[1];
-				keyUri = uri ? new URL(uri, baseUrl).toString() : null;
-			}
-		} else if (line.startsWith('#EXT-X-MAP:')) {
-			const uri = /URI="([^"]+)"/.exec(line)?.[1];
-			initUri = uri ? new URL(uri, baseUrl).toString() : null;
-		} else if (line && !line.startsWith('#')) {
-			segmentUris.push(new URL(line, baseUrl).toString());
-		}
-	}
-	return { keyUri, initUri, segmentUris };
 }
 
 function failure(message: string, permanent: boolean): HlsDownloadResult {
@@ -94,7 +60,7 @@ async function runFfmpeg(args: string[]): Promise<string | null> {
 }
 
 type ResolveFailure = { status: number | null; message: string };
-type ResolvedStream = { url: string } | ResolveFailure;
+type ResolvedStream = { url: string; licenseAuthToken?: string } | ResolveFailure;
 
 async function resolveStreamUrl(
 	soundcloud: SoundcloudClient,
@@ -104,9 +70,12 @@ async function resolveStreamUrl(
 	const params: Record<string, string> = {};
 	if (track.track_authorization) params.track_authorization = track.track_authorization;
 	try {
-		const body = (await soundcloud.api.getURL(transcoding.url, params)) as { url?: string };
+		const body = (await soundcloud.api.getURL(transcoding.url, params)) as {
+			url?: string;
+			licenseAuthToken?: string;
+		};
 		if (!body.url) return { status: null, message: 'resolve response carried no url' };
-		return { url: body.url };
+		return { url: body.url, licenseAuthToken: body.licenseAuthToken };
 	} catch (error) {
 		const message = errorMessage(error);
 		const status = /Status code (\d+)/.exec(message)?.[1];
@@ -171,9 +140,101 @@ export async function downloadEncryptedHls(
 	track: SoundcloudTrack,
 	tempDir: string,
 	trackKey: string,
+	decryptionServiceUrl: string | null,
 ): Promise<HlsDownloadResult> {
-	const transcoding = encryptedHlsTranscoding(track);
-	if (!transcoding) return failure('no encrypted HLS transcoding offered', true);
+	const preferred = decryptionServiceUrl ? 'ctr-encrypted-hls' : 'cbc-encrypted-hls';
+	const rank = (t: SoundcloudTranscoding) =>
+		(t.quality === 'sq' ? 0 : 10) + (t.format.protocol === preferred ? 0 : 1);
+	const candidates = encryptedHlsTranscodings(track).sort((a, b) => rank(a) - rank(b));
+	if (!candidates.length) return failure('no encrypted HLS transcoding offered', true);
+	const errors: string[] = [];
+	let permanent = true;
+	for (const transcoding of candidates) {
+		const label = `${transcoding.format.protocol} ${transcoding.preset}`;
+		const result = await downloadEncryptedRendition(
+			soundcloud,
+			track,
+			tempDir,
+			trackKey,
+			transcoding,
+		);
+		if ('widevine' in result) {
+			if (decryptionServiceUrl) {
+				return decryptViaService(
+					decryptionServiceUrl,
+					result.widevine,
+					tempDir,
+					trackKey,
+					transcoding,
+				);
+			}
+			errors.push(`${label}: key delivery is Widevine — no decryption service configured`);
+			continue;
+		}
+		if (result.success) return result;
+		errors.push(`${label}: ${result.message}`);
+		permanent &&= result.permanent;
+	}
+	return failure(errors.join('; '), permanent);
+}
+
+async function decryptViaService(
+	serviceUrl: string,
+	request: DecryptionRequest,
+	tempDir: string,
+	trackKey: string,
+	transcoding: SoundcloudTranscoding,
+): Promise<HlsDownloadResult> {
+	const filePath = path.join(tempDir, `${trackKey}.m4a`);
+	let audio: ArrayBuffer;
+	try {
+		const response = await fetch(new URL('/decrypt', serviceUrl), {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(request),
+			signal: AbortSignal.timeout(3_660_000),
+		});
+		if (!response.ok) {
+			return failure(
+				`decryption service HTTP ${response.status}: ${await response.text()}`,
+				true,
+			);
+		}
+		audio = await response.arrayBuffer();
+	} catch (error) {
+		return failure(`decryption service unreachable: ${errorMessage(error)}`, true);
+	}
+	await fs.promises.writeFile(filePath, Buffer.from(audio));
+	const decodeError = await runFfmpeg([
+		'-v',
+		'error',
+		'-xerror',
+		'-i',
+		filePath,
+		'-f',
+		'null',
+		'-',
+	]);
+	if (decodeError) {
+		await cleanupFile(filePath, 'undecodable decryption service output');
+		return failure(`decryption service returned undecodable audio: ${decodeError}`, true);
+	}
+	return {
+		success: true,
+		filePath,
+		protocol: transcoding.format.protocol,
+		preset: transcoding.preset,
+		keyMethod: 'Widevine',
+	};
+}
+
+async function downloadEncryptedRendition(
+	soundcloud: SoundcloudClient,
+	track: SoundcloudTrack,
+	tempDir: string,
+	trackKey: string,
+	transcoding: SoundcloudTranscoding,
+): Promise<HlsDownloadResult | { widevine: DecryptionRequest }> {
 	const protocol = transcoding.format.protocol;
 	const resolved = await resolveStreamUrl(soundcloud, track, transcoding);
 	if ('status' in resolved) return resolveFailure('encrypted HLS', resolved);
@@ -187,10 +248,14 @@ export async function downloadEncryptedHls(
 		);
 	}
 	const playlistText = await playlistResponse.text();
-	const licensed = licenseDelivery(playlistText);
-	if (licensed) {
-		return failure(`key delivery is license-server DRM (${licensed}) — no https key`, true);
+	if (widevineKeyLines(playlistText).length) {
+		if (!resolved.licenseAuthToken)
+			return failure('Widevine resolver omitted licenseAuthToken', true);
+		return { widevine: { url: resolved.url, licenseAuthToken: resolved.licenseAuthToken } };
 	}
+	const licensed = licenseDelivery(playlistText);
+	if (licensed)
+		return failure(`key delivery is license-server DRM (${licensed}) — no https key`, true);
 	const keyMethod = playlistKeyMethod(playlistText);
 	if (!isSupportedKeyMethod(keyMethod)) {
 		return failure(`unsupported HLS key method "${keyMethod}" on ${protocol}`, true);

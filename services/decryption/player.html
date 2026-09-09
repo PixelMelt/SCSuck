@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>SoundCloud encrypted audio verification</title>
+<audio
+	id="audio"
+	muted
+></audio>
+<script type="module">
+	const audio = document.getElementById('audio');
+	const evidence = { events: [], keyStatuses: [] };
+	const startedAt = performance.now();
+	const record = (name, details) =>
+		evidence.events.push({ name, elapsedMs: performance.now() - startedAt, ...details });
+	let reported = false;
+	async function report(error) {
+		if (reported) return;
+		reported = true;
+		if (!error && !evidence.keyStatuses.some((key) => key.status === 'usable'))
+			error = new Error('No usable decryption key');
+		if (!error && !(audio.webkitAudioDecodedByteCount > 0))
+			error = new Error('No audio bytes decoded');
+		if (
+			!error &&
+			!(
+				audio.ended &&
+				Number.isFinite(audio.duration) &&
+				audio.currentTime >= audio.duration - 0.1
+			)
+		)
+			error = new Error('Full-duration playback did not finish');
+		evidence.success = !error;
+		evidence.error = error ? String(error.stack || error) : null;
+		evidence.currentTime = audio.currentTime;
+		evidence.duration = Number.isFinite(audio.duration) ? audio.duration : null;
+		evidence.decodedAudioBytes = audio.webkitAudioDecodedByteCount;
+		await fetch('/result', { method: 'POST', body: JSON.stringify(evidence) });
+	}
+	window.addEventListener('unhandledrejection', (event) => report(event.reason));
+	audio.addEventListener('error', () =>
+		report(new Error(`Media error ${audio.error.code}: ${audio.error.message}`)),
+	);
+	audio.addEventListener('ended', () => {
+		record('ended', {});
+		report();
+	});
+	const { timeoutMs } = await (await fetch('/config')).json();
+	setTimeout(() => report(new Error('Decryption timed out')), timeoutMs);
+	try {
+		const access = await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [
+			{
+				initDataTypes: ['cenc'],
+				audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }],
+				sessionTypes: ['temporary'],
+			},
+		]);
+		record('key-system-access', { configuration: access.getConfiguration() });
+		const mediaKeys = await access.createMediaKeys();
+		await audio.setMediaKeys(mediaKeys);
+		const session = mediaKeys.createSession('temporary');
+		session.addEventListener('keystatuseschange', () => {
+			evidence.keyStatuses = Array.from(session.keyStatuses, ([id, status]) => ({
+				id: Array.from(new Uint8Array(id), (value) =>
+					value.toString(16).padStart(2, '0'),
+				).join(''),
+				status,
+			}));
+			record('key-statuses-change', { statuses: evidence.keyStatuses });
+		});
+		session.addEventListener('message', async (event) => {
+			record('license-challenge', {
+				messageType: event.messageType,
+				bytes: event.message.byteLength,
+			});
+			const response = await fetch('/license', { method: 'POST', body: event.message });
+			if (!response.ok) throw new Error(`License HTTP ${response.status}`);
+			const license = await response.arrayBuffer();
+			record('license-response', { bytes: license.byteLength });
+			await session.update(license);
+			record('session-update-complete', {});
+		});
+		const initDataResponse = await fetch('/pssh');
+		if (!initDataResponse.ok) throw new Error(`PSSH HTTP ${initDataResponse.status}`);
+		await session.generateRequest('cenc', await initDataResponse.arrayBuffer());
+		record('generate-request-complete', {});
+		const source = new MediaSource();
+		audio.src = URL.createObjectURL(source);
+		await new Promise((resolve) =>
+			source.addEventListener('sourceopen', resolve, { once: true }),
+		);
+		const buffer = source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
+		buffer.addEventListener('error', () => report(new Error('SourceBuffer append failed')));
+		const mediaResponse = await fetch('/media');
+		if (!mediaResponse.ok) throw new Error(`Media HTTP ${mediaResponse.status}`);
+		const media = await mediaResponse.arrayBuffer();
+		buffer.appendBuffer(media);
+		await new Promise((resolve) =>
+			buffer.addEventListener('updateend', resolve, { once: true }),
+		);
+		source.endOfStream();
+		audio.playbackRate = 16;
+		await audio.play();
+		record('playing', { inputBytes: media.byteLength });
+	} catch (error) {
+		await report(error);
+	}
+</script>
